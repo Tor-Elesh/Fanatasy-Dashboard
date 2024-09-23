@@ -255,7 +255,7 @@ teams = {'Arsenal':Ar, 'Aston Villa':Av, 'Bournemouth':bm, 'Brentford':bf, 'Brig
        'Leicester':Lc, 'Liverpool':LP, 'Man City':MC, 'Man Utd':MU, 'Newcastle':NC,
        "Nott'm Forest":NM, 'Southampton':SH, 'Spurs':Su, 'West Ham':WH, 'Wolves':W}
 for player in top_players['id']:
-    if len(best_replacement_team) < team_limit\
+    if len(best_replacement_team) <= team_limit\
             and player not in injured.to_list() \
             and budget >= elements_df.loc[elements_df['id'] == player]['now_cost'].sum()\
             and positions[elements_df.loc[elements_df['id'] == player]['element_type'].sum()] > 0\
@@ -266,7 +266,7 @@ for player in top_players['id']:
         teams[elements_df.loc[elements_df['id'] == player]['name'].sum()] = teams[elements_df.loc[elements_df['id'] == player]['name'].sum()] - 1
     else:
         for player in top_players['id']:
-            if len(cheap_players) < cheap_player_limit \
+            if len(cheap_players) <= cheap_player_limit \
                     and player not in injured.to_list() \
                     and player in elements_df.loc[elements_df['now_cost'] == 4.5]['id'].unique() \
                     and positions[elements_df.loc[elements_df['id'] == player]['element_type'].sum()] > 0 \
