@@ -266,7 +266,7 @@ for player in top_players['id']:
         teams[elements_df.loc[elements_df['id'] == player]['name'].sum()] = teams[elements_df.loc[elements_df['id'] == player]['name'].sum()] - 1
     else:
         for player in top_players['id']:
-            if len(cheap_players) <= cheap_player_limit \
+            if len(cheap_players) <= 15-len(best_replacement_team) \
                     and player not in injured.to_list() \
                     and player in elements_df.loc[elements_df['now_cost'] == 4.5]['id'].unique() \
                     and positions[elements_df.loc[elements_df['id'] == player]['element_type'].sum()] > 0 \
