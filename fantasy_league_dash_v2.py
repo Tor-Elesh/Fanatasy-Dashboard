@@ -220,7 +220,7 @@ leagueperformance = pd.concat(leagueperformance)
 
 best_replacement_team=[]
 cheap_players=[]
-budget = 84
+budget = 82
 team_limit = 11
 cheap_player_limit = 4
 injured = elements_df.loc[elements_df['COPNR'] != 100]['id']
