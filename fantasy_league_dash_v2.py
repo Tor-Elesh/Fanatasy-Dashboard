@@ -218,16 +218,6 @@ for x, z in zip(names, ids):
     leagueperformance.append(competitiveperformance)
 leagueperformance = pd.concat(leagueperformance)
 
-best_replacement_team=[]
-cheap_players=[]
-budget = 82
-team_limit = 11
-cheap_player_limit = 4
-injured = elements_df.loc[elements_df['COPNR'] != 100]['id']
-gk = 2
-df = 5
-md = 5
-fwd = 3
 
 Ar = 3
 Av = 3
@@ -249,33 +239,54 @@ SH = 3
 Su = 3
 WH = 3
 W = 3
-positions = {'Goalkeeper':gk, 'Defender':df, 'Midfielder':md, 'Forward':fwd}
 teams = {'Arsenal':Ar, 'Aston Villa':Av, 'Bournemouth':bm, 'Brentford':bf, 'Brighton':br,
        'Chelsea':ch, 'Crystal Palace':cp, 'Everton':Et, 'Fulham':Fh, 'Ipswich':Iw,
        'Leicester':Lc, 'Liverpool':LP, 'Man City':MC, 'Man Utd':MU, 'Newcastle':NC,
        "Nott'm Forest":NM, 'Southampton':SH, 'Spurs':Su, 'West Ham':WH, 'Wolves':W}
+
+roi_players=[]
+roi_team_limit = 4
+roigk = 1
+roidf = 2
+roimf = 1
+injured = elements_df.loc[elements_df['COPNR'] != 100]['id']
+roi_positions = {'Goalkeeper':roigk, 'Defender':roidf, 'Midfielder':roimf, 'Forward':0}
 for player in top_players['id']:
-    if len(best_replacement_team) <= team_limit\
+    if len(roi_players) <= roi_team_limit\
             and player not in injured.to_list() \
-            and budget >= elements_df.loc[elements_df['id'] == player]['now_cost'].sum()\
+            and player in elements_df.loc[elements_df['now_cost'] <= 5]['id'].unique()\
+            and roi_positions[elements_df.loc[elements_df['id'] == player]['element_type'].sum()] > 0\
+            and teams[elements_df.loc[elements_df['id'] == player]['name'].sum()] > 0:
+        roi_players.append(player)
+        roi_positions[elements_df.loc[elements_df['id'] == player]['element_type'].sum()] = roi_positions[elements_df.loc[elements_df['id'] == player]['element_type'].sum()] - 1
+        teams[elements_df.loc[elements_df['id'] == player]['name'].sum()] = teams[elements_df.loc[elements_df['id'] == player]['name'].sum()] - 1
+    else:
+        pass
+roi_team = elements_df.loc[elements_df['id'].isin(roi_players)]
+
+star_player=[]
+team_limit = 4
+budget = myteamdf['now_cost'].sum()+moneyinbank - roi_team['now_cost'].sum()
+gk = 1
+df = 3
+md = 4
+fwd = 3
+positions = {'Goalkeeper':gk, 'Defender':df, 'Midfielder':md, 'Forward':fwd}
+for player in top_players['id']:
+    if len(star_player) <= team_limit\
+            and player not in injured.to_list() \
+            and  budget >= elements_df.loc[elements_df['id'] == player]['now_cost'].sum()\
             and positions[elements_df.loc[elements_df['id'] == player]['element_type'].sum()] > 0\
             and teams[elements_df.loc[elements_df['id'] == player]['name'].sum()] > 0:
-        best_replacement_team.append(player)
+        star_player.append(player)
         budget -= elements_df.loc[elements_df['id'] == player]['now_cost'].sum()
         positions[elements_df.loc[elements_df['id'] == player]['element_type'].sum()] = positions[elements_df.loc[elements_df['id'] == player]['element_type'].sum()] - 1
         teams[elements_df.loc[elements_df['id'] == player]['name'].sum()] = teams[elements_df.loc[elements_df['id'] == player]['name'].sum()] - 1
     else:
-        for player in top_players['id']:
-            if len(cheap_players) <= 15-len(best_replacement_team) \
-                    and player not in injured.to_list() \
-                    and player in elements_df.loc[elements_df['now_cost'] == 4.5]['id'].unique() \
-                    and positions[elements_df.loc[elements_df['id'] == player]['element_type'].sum()] > 0 \
-                    and teams[elements_df.loc[elements_df['id'] == player]['name'].sum()] > 0:
-                cheap_players.append(player)
-                positions[elements_df.loc[elements_df['id'] == player]['element_type'].sum()] = positions[elements_df.loc[elements_df['id'] == player]['element_type'].sum()] - 1
-                teams[elements_df.loc[elements_df['id'] == player]['name'].sum()] = teams[elements_df.loc[elements_df['id'] == player]['name'].sum()] - 1
+        pass
 
-final_team = elements_df.loc[elements_df['id'].isin(best_replacement_team) | elements_df['id'].isin(cheap_players)].sort_values('total_points', ascending=False)
+top_team = elements_df.loc[elements_df['id'].isin(star_player)]
+final_team = pd.concat([top_team, roi_team])
 
 # Advise on Scenario
 myteamdf.loc[myteamdf['Opp Cost'] != myteamdf['Opp Cost'].max(), 'Primary Scenario'] = myteamdf['TP']
@@ -353,6 +364,11 @@ with g2:
             d['line']['color'] = 'red'
         else:
             d['line']['color'] = 'lightgrey'
+
+
+    st.plotly_chart(fig, use_container_width=True)
+
+print('done')
 
 
     st.plotly_chart(fig, use_container_width=True)
