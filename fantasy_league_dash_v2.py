@@ -200,7 +200,7 @@ for x in myteamdf['element_type'].unique():
         pass
 
 scenariopicker = pd.concat(dualswapdic).reset_index().groupby('level_0')['second_Alt TP'].sum().reset_index()
-scenariopicker = scenariopicker.loc[scenariopicker['second_Alt TP']==scenariopicker['second_Alt TP'].max()]['level_0'].sum()
+scenariopicker = scenariopicker.loc[scenariopicker['second_Alt TP']==scenariopicker['second_Alt TP'].max()]['level_0'].iloc[0]
 dualswapoutdf = dualswapdic[scenariopicker]
 dualswapoutdf = dualswapoutdf.rename(columns={'second_Alt Web Name':'web_name', 'second_Alt TP':'TP', 'second_Alt Team':'name'})
 
