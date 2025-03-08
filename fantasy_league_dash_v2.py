@@ -255,7 +255,7 @@ for player in top_players['id']:
     if len(roi_players) <= roi_team_limit\
             and player not in injured.to_list() \
             and player in elements_df.loc[elements_df['now_cost'] <= 5]['id'].unique()\
-            and roi_positions[elements_df.loc[elements_df['id'] == player]['element_type'].sum()] > 0\
+            and elements_df[elements_df.loc[elements_df['id'] == player]['element_type'].sum()] > 0\
             and teams[elements_df.loc[elements_df['id'] == player]['name'].sum()] > 0:
         roi_players.append(player)
         roi_positions[elements_df.loc[elements_df['id'] == player]['element_type'].sum()] = roi_positions[elements_df.loc[elements_df['id'] == player]['element_type'].sum()] - 1
