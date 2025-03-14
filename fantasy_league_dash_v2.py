@@ -10,12 +10,14 @@ warnings.filterwarnings('ignore')
 # Data Pull
 
 # Get Current Gameweek
+#--------------------------------------------------------------
 json = requests.get('https://fantasy.premierleague.com/api/bootstrap-static/').json()
 dg = pd.DataFrame(json['events'])[['id', 'most_captained']]
 currentgameweek = dg.loc[~dg['most_captained'].isna()]['id'].max()
 nextweek = currentgameweek+1
 
 # All Player Performance - name, team, score, fixtures, fixture difficulty
+#--------------------------------------------------------------
 json = requests.get('https://fantasy.premierleague.com/api/bootstrap-static/').json()
 elements_df = pd.DataFrame(json['elements'])[[
     'id',
@@ -81,17 +83,22 @@ elements_df['TP'] = elements_df['4wpoints'] - elements_df['MD'] + elements_df['h
 
 di = {1:'Goalkeeper', 2:'Defender', 3:'Midfielder', 4:'Forward'}
 elements_df = elements_df.replace({'element_type': di})
+managers = elements_df.loc[elements_df['element_type'] == 5]
+elements_df = elements_df.loc[elements_df['element_type'] != 5]
 
 # upcoming fixtures - fixtures, difficulty, double gameweeks
+#--------------------------------------------------------------
 upcoming_fixtures_df = fixtures_df.groupby(['event', 'name'])['team'].count().reset_index()
 upcoming_fixtures_df = upcoming_fixtures_df.loc[upcoming_fixtures_df['team']>1]
 
 # Get How Much Money I have in Bank
+#--------------------------------------------------------------
 json = requests.get('https://fantasy.premierleague.com/api/entry/5521294/history').json()
 currentperformance = pd.DataFrame(json['current'])
 moneyinbank = currentperformance.loc[currentperformance['event'] == currentgameweek]['bank'].sum() / 10
 
 # My Team Perfomance - name, team, score, fixture difficulty
+#--------------------------------------------------------------
 json = requests.get(f'https://fantasy.premierleague.com/api/entry/5521294//event/{currentgameweek}/picks/').json()
 
 myteamdf = pd.DataFrame(json['picks'])['element']
@@ -99,7 +106,7 @@ myteamdf = elements_df.loc[elements_df['id'].isin(myteamdf)].sort_values('total_
 myteamdf['replacement_budget'] = myteamdf['now_cost'] + moneyinbank
 
 # alternative players logic, single swap out
-
+#--------------------------------------------------------------
 top_players = elements_df.sort_values(by='TP', ascending=False)
 teamtotals = myteamdf.groupby('name')['id'].count().reset_index()
 
@@ -134,6 +141,7 @@ altplayer = myteamdf.sort_values('Opp Cost', ascending=False)[['Alt Web Name', '
 altplayer = altplayer.rename(columns={'web_name':'replace out for'})
 
 # alternative players logic, dual swap out
+#--------------------------------------------------------------
 dualswapdic = {}
 for x in myteamdf['element_type'].unique():
     try:
@@ -205,6 +213,7 @@ dualswapoutdf = dualswapdic[scenariopicker]
 dualswapoutdf = dualswapoutdf.rename(columns={'second_Alt Web Name':'web_name', 'second_Alt TP':'TP', 'second_Alt Team':'name'})
 
 # Enemy player stats - scores per gameweek
+#--------------------------------------------------------------
 
 names = ["James_Curran", "Sam", "Sean", "Chris", "James_Cowell", "Tor-Elesh", 'Ross', 'Patrick']
 ids = ['3578550', '4074556', '5983095', '5207915', '6222620', '5521294', '5775103', '218856']
@@ -218,76 +227,75 @@ for x, z in zip(names, ids):
     leagueperformance.append(competitiveperformance)
 leagueperformance = pd.concat(leagueperformance)
 
-
-Ar = 3
-Av = 3
-bm = 3
-bf = 3
-br = 3
-ch = 3
-cp = 3
-Et = 3
-Fh = 3
-Iw = 3
-Lc = 3
-LP = 3
-MC = 3
-MU = 3
-NC = 3
-NM = 3
-SH = 3
-Su = 3
-WH = 3
-W = 3
-teams = {'Arsenal':Ar, 'Aston Villa':Av, 'Bournemouth':bm, 'Brentford':bf, 'Brighton':br,
-       'Chelsea':ch, 'Crystal Palace':cp, 'Everton':Et, 'Fulham':Fh, 'Ipswich':Iw,
-       'Leicester':Lc, 'Liverpool':LP, 'Man City':MC, 'Man Utd':MU, 'Newcastle':NC,
-       "Nott'm Forest":NM, 'Southampton':SH, 'Spurs':Su, 'West Ham':WH, 'Wolves':W}
-
-roi_players=[]
-roi_team_limit = 4
-roigk = 1
-roidf = 2
-roimf = 1
-injured = elements_df.loc[elements_df['COPNR'] != 100]['id']
-roi_positions = {'Goalkeeper':roigk, 'Defender':roidf, 'Midfielder':roimf, 'Forward':0}
-for player in top_players['id']:
-    if len(roi_players) <= roi_team_limit\
-            and player not in injured.to_list() \
-            and player in elements_df.loc[elements_df['now_cost'] <= 5]['id'].unique()\
-            and teams[elements_df.loc[elements_df['id'] == player]['name'].sum()] > 0:
-        roi_players.append(player)
-        roi_positions[elements_df.loc[elements_df['id'] == player]['element_type'].sum()] = roi_positions[elements_df.loc[elements_df['id'] == player]['element_type'].sum()] - 1
-        teams[elements_df.loc[elements_df['id'] == player]['name'].sum()] = teams[elements_df.loc[elements_df['id'] == player]['name'].sum()] - 1
+# Full team swap out v1
+#--------------------------------------------------------------
+df = elements_df.loc[elements_df['home/away'].isna()]
+# Define the required number of players for each position
+positions = {
+    'Goalkeeper': 2,
+    'Defender': 5,
+    'Midfielder': 5,
+    'Forward': 3
+}
+# Sort players by total points within each position
+sorted_players = {pos: df[df['element_type'] == pos].sort_values(by='total_points', ascending=False) for pos in positions}
+# Add a column for ROI
+df['ROI'] = df['total_points'] / df['now_cost']
+# Select 4 players with high ROI
+high_roi_players = df.sort_values(by='ROI', ascending=False).head(4)
+# Remove high ROI players from sorted_players
+sorted_players = {pos: sorted_players[pos][~sorted_players[pos].id.isin(high_roi_players.id)] for pos in positions}
+# Initialize lists for the final team and constraints
+final_team = []
+team_counts = {}
+total_cost = 0
+# Function to add a player if constraints are met
+def add_player(player):
+    global total_cost
+    team = player['name']
+    cost = player['now_cost']
+    if team_counts.get(team, 0) < 3 and total_cost + cost <= 103.1:
+        final_team.append(player)
+        team_counts[team] = team_counts.get(team, 0) + 1
+        total_cost += cost
+        return True
+    return False
+# Add high ROI players first
+for _, player in high_roi_players.iterrows():
+    add_player(player)
+# Add top players while satisfying the constraints
+for pos, count in positions.items():
+    added_count = 0
+    for _, player in sorted_players[pos].iterrows():
+        if add_player(player):
+            added_count += 1
+        if added_count == count:
+            break
+# If fewer than 15 players, add more while considering constraints
+remaining_players = df.sort_values(by='total_points', ascending=False)
+for _, player in remaining_players.iterrows():
+    if len(final_team) < 15:
+        add_player(player)
     else:
-        pass
-roi_team = elements_df.loc[elements_df['id'].isin(roi_players)]
-
-star_player=[]
-team_limit = 4
-budget = myteamdf['now_cost'].sum()+moneyinbank - roi_team['now_cost'].sum()
-gk = 1
-df = 3
-md = 4
-fwd = 3
-positions = {'Goalkeeper':gk, 'Defender':df, 'Midfielder':md, 'Forward':fwd}
-for player in top_players['id']:
-    if len(star_player) <= team_limit\
-            and player not in injured.to_list() \
-            and  budget >= elements_df.loc[elements_df['id'] == player]['now_cost'].sum()\
-            and positions[elements_df.loc[elements_df['id'] == player]['element_type'].sum()] > 0\
-            and teams[elements_df.loc[elements_df['id'] == player]['name'].sum()] > 0:
-        star_player.append(player)
-        budget -= elements_df.loc[elements_df['id'] == player]['now_cost'].sum()
-        positions[elements_df.loc[elements_df['id'] == player]['element_type'].sum()] = positions[elements_df.loc[elements_df['id'] == player]['element_type'].sum()] - 1
-        teams[elements_df.loc[elements_df['id'] == player]['name'].sum()] = teams[elements_df.loc[elements_df['id'] == player]['name'].sum()] - 1
-    else:
-        pass
-
-top_team = elements_df.loc[elements_df['id'].isin(star_player)]
-final_team = pd.concat([top_team, roi_team])
+        break
+# Ensure exactly 15 players are selected
+if len(final_team) < 15:
+    additional_needed = 15 - len(final_team)
+    for pos, count in positions.items():
+        if additional_needed > 0:
+            position_players = df[df['element_type'] == pos]
+            for _, player in position_players.iterrows():
+                if add_player(player):
+                    additional_needed -= 1
+                if additional_needed == 0:
+                    break
+        if additional_needed == 0:
+            break
+# Create the final team DataFrame
+final_team = pd.DataFrame(final_team)
 
 # Advise on Scenario
+#--------------------------------------------------------------
 myteamdf.loc[myteamdf['Opp Cost'] != myteamdf['Opp Cost'].max(), 'Primary Scenario'] = myteamdf['TP']
 myteamdf['Primary Scenario'] = myteamdf['Primary Scenario'].fillna(myteamdf['Alt TP'])
 singpleplayerout = myteamdf.loc[myteamdf['Opp Cost'] == myteamdf['Opp Cost'].max()]['web_name'].sum()
