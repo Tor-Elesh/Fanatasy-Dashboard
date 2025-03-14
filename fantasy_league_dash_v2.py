@@ -229,7 +229,7 @@ leagueperformance = pd.concat(leagueperformance)
 
 # Full team swap out v1
 #--------------------------------------------------------------
-df = elements_df.loc[elements_df['home/away'].isna()]
+df = elements_df.loc[~elements_df['home/away'].isna()]
 # Define the required number of players for each position
 positions = {
     'Goalkeeper': 2,
