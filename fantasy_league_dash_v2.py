@@ -237,60 +237,69 @@ positions = {
     'Midfielder': 5,
     'Forward': 3
 }
-# Sort players by total points within each position
-sorted_players = {pos: df[df['element_type'] == pos].sort_values(by='total_points', ascending=False) for pos in positions}
-# Add a column for ROI
+
+# Calculate ROI
 df['ROI'] = df['total_points'] / df['now_cost']
-# Select 4 players with high ROI
-high_roi_players = df.sort_values(by='ROI', ascending=False).head(4)
-# Remove high ROI players from sorted_players
-sorted_players = {pos: sorted_players[pos][~sorted_players[pos].id.isin(high_roi_players.id)] for pos in positions}
+
+# Filter high ROI players with now_cost < 4.5
+high_roi_players = df[df['now_cost'] < 4.5].sort_values(by='ROI', ascending=False)
+
+# Ensure at least one high ROI Goalkeeper
+high_roi_goalkeepers = high_roi_players[high_roi_players['element_type'] == 'Goalkeeper'].head(1)
+high_roi_players = high_roi_players[~high_roi_players['id'].isin(high_roi_goalkeepers['id'])].head(3)
+high_roi_players = pd.concat([high_roi_goalkeepers, high_roi_players])
+
+# Sort players by total points within each position
+sorted_players = {pos: df[df['element_type'] == pos].sort_values(by='TP', ascending=False) for pos in positions}
+
 # Initialize lists for the final team and constraints
 final_team = []
 team_counts = {}
 total_cost = 0
+
 # Function to add a player if constraints are met
 def add_player(player):
     global total_cost
     team = player['name']
     cost = player['now_cost']
-    if team_counts.get(team, 0) < 3 and total_cost + cost <= 103.1:
+
+    if team_counts.get(team, 0) < 3 and total_cost + cost <= (myteamdf['now_cost'].sum() + moneyinbank):
         final_team.append(player)
         team_counts[team] = team_counts.get(team, 0) + 1
         total_cost += cost
         return True
     return False
+
 # Add high ROI players first
 for _, player in high_roi_players.iterrows():
     add_player(player)
+
 # Add top players while satisfying the constraints
 for pos, count in positions.items():
-    added_count = 0
+    added_count = sum(player['element_type'] == pos for player in final_team)
     for _, player in sorted_players[pos].iterrows():
-        if add_player(player):
+        if added_count < count and add_player(player):
             added_count += 1
-        if added_count == count:
-            break
+
 # If fewer than 15 players, add more while considering constraints
-remaining_players = df.sort_values(by='total_points', ascending=False)
+remaining_players = df.sort_values(by='TP', ascending=False)
 for _, player in remaining_players.iterrows():
-    if len(final_team) < 15:
-        add_player(player)
-    else:
-        break
+    if len(final_team) < 15 and add_player(player):
+        pass
+
 # Ensure exactly 15 players are selected
 if len(final_team) < 15:
     additional_needed = 15 - len(final_team)
     for pos, count in positions.items():
-        if additional_needed > 0:
-            position_players = df[df['element_type'] == pos]
-            for _, player in position_players.iterrows():
-                if add_player(player):
-                    additional_needed -= 1
-                if additional_needed == 0:
-                    break
+        position_players = df[df['element_type'] == pos]
+        for _, player in position_players.iterrows():
+            if add_player(player):
+                additional_needed -= 1
+            if additional_needed == 0:
+                break
         if additional_needed == 0:
             break
+
 # Create the final team DataFrame
 final_team = pd.DataFrame(final_team)
 
@@ -377,4 +386,5 @@ with g2:
     st.plotly_chart(fig, use_container_width=True)
 
 print('done')
+
 
