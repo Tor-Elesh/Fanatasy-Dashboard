@@ -336,6 +336,7 @@ with c1:
     st.dataframe(
         myteamdf.sort_values('TP', ascending=False).reset_index()[['web_name','COPNR','name','element_type', 'MD', 'Alt Web Name', 'Alt Team', 'Opp Cost']]
         .style.format({'Opp Cost': '{:.2f}'.format,
+                       'MD': '{:.0f}'.format,
                       'COPNR': '{:.0f}'.format})
         .applymap(lambda s: np.where(s >= 4, "background-color:red", None), subset=['MD'])
         .applymap(lambda s: np.where(s <= 2, "background-color:green", None), subset=['MD'])
